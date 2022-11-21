@@ -3,11 +3,11 @@ const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const cookieParser = require('cookie-parser')
-
 const connectDB = require('./config/connectDB')
 const corsOptions = require('./config/corsOptions')
 const UserRoutes = require('./routes/UserRoutes')
 const NoteRoutes = require('./routes/NoteRoutes')
+const AuthRoutes = require('./routes/AuthRoutes')
 
 const app = express()
 const PORT = process.env.PORT || 3500
@@ -22,6 +22,7 @@ app.use(express.json())
 app.use(cookieParser())
 
 // Routes
+app.use('/auth', AuthRoutes)
 app.use('/users', UserRoutes)
 app.use('/notes', NoteRoutes)
 
