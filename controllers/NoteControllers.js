@@ -7,31 +7,38 @@ const asyncHandler = require('express-async-handler')
 // @access Private
 const getAllNotes = asyncHandler(async (req, res) => {
     const notes = await NoteModel.find().lean()
+
     if (!notes?.length) {
         return res.status(404).json({message: 'No notes found'})
     }
-    res.status(200).json(notes)
+    
+    const notesWithUser = await Promise.all(notes.map(async (note) => {
+        const user = await UserModel.findById(note.user).lean().exec()
+        return {...note, username: user.username}
+    }))
+
+    res.status(200).json(notesWithUser)
 })
 
 // @desc Create new note
 // @route POST /notes
 // @access Private
 const createNewNote = asyncHandler(async (req, res) => {
-    const { userID, title, body } = req.body
+    const { user, title, text } = req.body
 
     // Confirm data
-    if (!userID || !title || !body) {
+    if (!user || !title || !text) {
         return res.status(400).json({message: 'All fields are required.'})
     }
 
-    // Check if user exist
-    const user = await UserModel.findById(userID).lean().exec()
+    // Check for duplicate title
+    const duplicate = await NoteModel.findOne({ title }).lean().exec()
 
-    if (!user) {
-        return res.status(404).json({message: 'Cannot create note. User does not exist.'})
+    if (duplicate) {
+        return res.status(409).json({ message: 'Duplicate note title' })
     }
 
-    const noteObject = {user: userID , title, body}
+    const noteObject = { user, title, text }
 
     // Create and store new note
     const newNote = await NoteModel.create(noteObject)
@@ -47,29 +54,30 @@ const createNewNote = asyncHandler(async (req, res) => {
 // @route PUT /notes
 // @access Private
 const updateNote = asyncHandler(async (req, res) => {
-    const { id, title, body, userID, completed } = req.body
+    const { id, title, text, user, completed } = req.body
 
     // Confirm data
-    if (!id || !title || !body || !userID || typeof completed !== 'boolean') {
+    if (!id || !title || !text || !user || typeof completed !== 'boolean') {
         return res.status(400).json({message: 'All fields are required'})
     }
 
-    // Check if user exist
-    const user = await UserModel.findById(userID).lean().exec()
-
-    if (!user) {
-        return res.status(404).json({message: 'Cannot update note. User does not exist.'})
-    }
-
+    // Confirm note exists
     const note = await NoteModel.findById(id).exec()
 
     if (!note) {
         return res.status(404).json({message: 'Note not found'})
     }
 
+    // Check for duplicate title
+    const duplicate = await NoteModel.findOne({ title }).lean().exec()
+
+    if (duplicate && duplicate?._id.toString() !== id) {
+        return res.status(409).json({ message: 'Duplicate note title' })
+    }
+
     note.title = title
-    note.body = body
-    note.user = userID
+    note.text = text
+    note.user = user
     note.completed = completed
 
     const updatedNote = await note.save()
@@ -88,7 +96,7 @@ const deleteNote = asyncHandler(async (req, res) => {
         return res.status(400).json({message: 'Note ID required'})
     }
 
-    const note = await NoteModel.findById(id)
+    const note = await NoteModel.findById(id).exec()
 
     if (!note) {
         return res.status(404).json({message: 'Note not found'})
