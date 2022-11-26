@@ -7,7 +7,7 @@ const connectDB = async () => {
             useNewUrlParser: true
         })
     } catch (error) {
-        handleError(error)
+        console.log(error)
     }
 }
 
