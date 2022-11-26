@@ -1,5 +1,5 @@
 const allowedOrigins = [
-    'https://mikowesome-technotes.netlify.app/'
+    'https://mikowesome-technotes.onrender.com'
 ]
 
 const corsOptions = {
